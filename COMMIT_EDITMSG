@@ -1,1 +1,1 @@
-Prepare for GitHub + Vercel deployment: add serverless API endpoints for live demo
+Add explicit vercel.json to fix Python entrypoint detection

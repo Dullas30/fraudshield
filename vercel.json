@@ -1,0 +1,15 @@
+{
+  "version": 2,
+  "builds": [
+    { "src": "api/predict.py", "use": "@vercel/python" },
+    { "src": "api/live_feed.py", "use": "@vercel/python" },
+    { "src": "api/stats.py", "use": "@vercel/python" },
+    { "src": "index.html", "use": "@vercel/static" }
+  ],
+  "routes": [
+    { "src": "/api/predict", "dest": "api/predict.py" },
+    { "src": "/api/live_feed", "dest": "api/live_feed.py" },
+    { "src": "/api/stats", "dest": "api/stats.py" },
+    { "src": "/(.*)", "dest": "/index.html" }
+  ]
+}
