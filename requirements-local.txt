@@ -1,3 +1,5 @@
+# Local ML dependencies for running the prediction server on your computer.
+# Vercel serves the presentation frontend without these packages.
 # Use Python 3.10-3.13. TensorFlow 2.21 does not support Python 3.14 yet.
 tensorflow==2.21.0
 scikit-learn==1.6.1
