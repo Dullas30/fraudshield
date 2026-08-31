@@ -1,0 +1,2 @@
+0000000000000000000000000000000000000000 6ef6c5ec688667c6a2d60ee55996402d9ffd9f4e FraudShield <dev@fraudshield.local> 1788210687 +0000	commit (initial): Prepare for GitHub + Vercel deployment: add serverless API endpoints for live demo
+6ef6c5ec688667c6a2d60ee55996402d9ffd9f4e 6ef6c5ec688667c6a2d60ee55996402d9ffd9f4e Claude <noreply@anthropic.com> 1788210690 +0000	Branch: renamed refs/heads/master to refs/heads/main

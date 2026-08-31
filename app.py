@@ -313,17 +313,17 @@ class Handler(BaseHTTPRequestHandler):
                 return
             self.send_body(200, INDEX_PATH.read_text(encoding="utf-8"), "text/html; charset=utf-8")
 
-        elif path == "/live_feed":
+        elif path in ("/live_feed", "/api/live_feed"):
             count = int(qs.get("count", ["5"])[0])
             self.send_json([random_tx() for _ in range(count)])
 
-        elif path == "/stats":
+        elif path in ("/stats", "/api/stats"):
             self.send_json(_dashboard_stats())
         else:
             self.send_body(404, "Not found", "text/plain")
 
     def do_POST(self):
-        if urlparse(self.path).path != "/predict":
+        if urlparse(self.path).path not in ("/predict", "/api/predict"):
             self.send_body(404, "Not found", "text/plain")
             return
         length = int(self.headers.get("Content-Length", 0))

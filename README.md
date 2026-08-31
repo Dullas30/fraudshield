@@ -1,9 +1,33 @@
 # FraudShield
 
-FraudShield is a local demo for detecting fraud in Nigerian electricity prepaid payment transactions.
+FraudShield is a demo for detecting fraud in Nigerian electricity prepaid payment transactions.
 It uses synthetic data, trains a real DNN and LSTM, combines them in a 60/40 ensemble, and serves results through Python's standard library HTTP server.
 
-## Setup
+There are two ways to run it:
+
+- **Live/hosted (Vercel)** — `index.html` is served as a static page, and `/api/predict`, `/api/live_feed`, and `/api/stats` are Vercel Python serverless functions (`api/*.py`) that use the same rule-based scoring heuristic `app.py` falls back to. This keeps the deployment tiny and fast — no TensorFlow, no model files, no cold starts.
+- **Local full stack** — `python app.py` serves `index.html` and loads the real trained DNN/LSTM ensemble from `model/` for genuine ML inference (falling back to the same heuristic if the models or their dependencies aren't available).
+
+## Deploying to GitHub + Vercel
+
+1. Push this repo to GitHub:
+
+   ```bash
+   git init
+   git add .
+   git commit -m "Initial commit"
+   git branch -M main
+   git remote add origin <your-repo-url>
+   git push -u origin main
+   ```
+
+2. Go to [vercel.com/new](https://vercel.com/new), import the GitHub repo, and click **Deploy** — no configuration needed.
+
+   - Vercel auto-detects `index.html` as the static site and the files in `api/` as Python serverless functions.
+   - The heavier local-only files (`app.py`, `train.py`, `data/`, `model/`, etc.) are excluded from the deployment via `.vercelignore`, so the deployed site is only a few MB.
+   - Once deployed, the site is fully interactive: the manual form, scenario buttons, live feed, and dashboard stats all hit the `/api/*` functions for real (simulated) responses.
+
+## Local Setup (real ML models)
 
 Recommended environment:
 
@@ -14,7 +38,7 @@ Recommended environment:
 1. Install dependencies
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements-local.txt
 ```
 
 If you're on Python 3.14, install Python 3.11 or 3.12 first. TensorFlow 2.21 supports Python 3.10 through 3.13, so 3.11 is the safest option for this project.

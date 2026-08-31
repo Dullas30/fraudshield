@@ -705,7 +705,7 @@ const SCENARIOS = {
 
 function loadScenario(name){
   const s = SCENARIOS[name];
-  fetch('/predict', {
+  fetch('/api/predict', {
     method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify(s)
   })
@@ -736,7 +736,7 @@ document.getElementById('fraudForm').addEventListener('submit', function(e){
   const fd = new FormData(this);
   const data = Object.fromEntries(fd.entries());
 
-  fetch('/predict', {
+  fetch('/api/predict', {
     method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify(data)
   })
@@ -802,12 +802,12 @@ function addTxToFeed(tx){
 }
 
 function fetchLiveFeed(){
-  fetch('/live_feed?count=3')
+  fetch('/api/live_feed?count=3')
     .then(r=>r.json())
     .then(txs => txs.forEach(addTxToFeed))
     .catch(()=>{});
 }
-fetch('/live_feed?count=12').then(r=>r.json()).then(txs=>txs.forEach(addTxToFeed));
+fetch('/api/live_feed?count=12').then(r=>r.json()).then(txs=>txs.forEach(addTxToFeed));
 setInterval(fetchLiveFeed, 1800);
 
 const SAMPLE_FEED = [
@@ -824,7 +824,7 @@ function seedFallbackFeed(){
 setTimeout(seedFallbackFeed, 900);
 
 function updateStats(){
-  fetch('/stats')
+  fetch('/api/stats')
     .then(r => r.json())
     .then(s => {
       document.getElementById('m-tpm').textContent = Number(s.throughput_per_min || 0).toLocaleString();
