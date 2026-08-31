@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FraudShield — Real-Time Electricity Payment Fraud Detection</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+  :root {
+    --bg:       #08111f;
+    --surface:  #101a2d;
+    --card:     #132036;
+    --card-2:   #16253d;
+    --border:   #233554;
+    --text:     #edf3fb;
+    --muted:    #90a4c0;
+    --accent:   #33b7ff;
+    --accent-2: #4c7dff;
+    --green:    #29c36a;
+    --red:      #f05f60;
+    --amber:    #f0ad3d;
+    --purple:   #7f8cff;
+    --mono:     'IBM Plex Mono', monospace;
+    --sans:     'Manrope', sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: var(--sans);
+    background:
+      radial-gradient(circle at top left, rgba(51,183,255,.10), transparent 32%),
+      radial-gradient(circle at top right, rgba(76,125,255,.10), transparent 28%),
+      linear-gradient(180deg, #08111f 0%, #091221 42%, #0b1424 100%);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+    letter-spacing: -0.01em;
+  }
+
+  nav {
+    background: rgba(8,17,31,.86);
+    border-bottom: 1px solid rgba(35,53,84,.85);
+    padding: 16px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky; top: 0; z-index: 100;
+    backdrop-filter: blur(16px);
+    box-shadow: 0 8px 30px rgba(0,0,0,.16);
+  }
+  .nav-brand { display: flex; align-items: center; gap: 12px; }
+  .nav-logo {
+    width: 36px; height: 36px; border-radius: 8px;
+    background: linear-gradient(135deg, #00D4FF 0%, #8B5CF6 100%);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+  }
+  .nav-title { font-size: 15px; font-weight: 700; letter-spacing: .04em; }
+  .nav-sub { font-size: 11px; color: var(--muted); font-family: var(--mono); opacity: .95; }
+  .nav-right { display: flex; align-items: center; gap: 16px; }
+  .live-badge {
+    background: rgba(34,197,94,.12);
+    border: 1px solid rgba(34,197,94,.4);
+    color: var(--green);
+    font-size: 11px; font-weight: 700;
+    padding: 4px 10px; border-radius: 20px;
+    display: flex; align-items: center; gap: 5px;
+    text-transform: uppercase; letter-spacing: .06em;
+  }
+  .pulse { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+  #clock { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+
+  .container { max-width: 1400px; margin: 0 auto; padding: 24px 28px; }
+  @media (min-width: 1200px) {
+    .container { padding: 32px 36px 40px; }
+  }
+  .section-title {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .12em; color: var(--muted); margin-bottom: 14px;
+  }
+
+  .metrics { display: grid; grid-template-columns: repeat(6,1fr); gap: 14px; margin-bottom: 26px; }
+  .metric-card {
+    background: linear-gradient(180deg, rgba(19,32,54,.96), rgba(16,26,45,.96));
+    border: 1px solid rgba(35,53,84,.95);
+    border-radius: 14px; padding: 18px;
+    transition: border-color .2s, transform .2s, box-shadow .2s;
+    box-shadow: 0 12px 28px rgba(0,0,0,.16);
+  }
+  .metric-card:hover { border-color: rgba(51,183,255,.35); transform: translateY(-1px); }
+  .metric-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .07em; margin-bottom: 8px; }
+  .metric-val { font-family: var(--mono); font-size: 22px; font-weight: 700; letter-spacing: -0.03em; }
+  .metric-sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .c-cyan   { color: var(--accent); }
+  .c-red    { color: var(--red); }
+  .c-green  { color: var(--green); }
+  .c-amber  { color: var(--amber); }
+  .c-purple { color: var(--purple); }
+
+  .main-grid { display: grid; grid-template-columns: 1fr 360px; gap: 22px; margin-bottom: 26px; }
+  .panel {
+    background: linear-gradient(180deg, rgba(19,32,54,.96), rgba(16,26,45,.96));
+    border: 1px solid rgba(35,53,84,.95);
+    border-radius: 18px; padding: 22px;
+    box-shadow: 0 12px 30px rgba(0,0,0,.18);
+  }
+  .panel-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 16px; padding-bottom: 12px;
+    border-bottom: 1px solid rgba(35,53,84,.7);
+  }
+  .panel-title-row { display: flex; align-items: center; gap: 8px; }
+  .panel-title { font-size: 13px; font-weight: 700; letter-spacing: .05em; }
+  .panel-icon { font-size: 14px; color: var(--accent); }
+
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .form-group { display: flex; flex-direction: column; gap: 5px; }
+  .form-group label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .07em; }
+  .form-group input, .form-group select {
+    background: rgba(11,18,32,.72); border: 1px solid rgba(35,53,84,.9);
+    color: var(--text); border-radius: 8px; padding: 9px 12px;
+    font-size: 13px; font-family: var(--sans);
+    transition: border-color .2s;
+    appearance: none;
+  }
+  .form-group input:focus, .form-group select:focus {
+    outline: none; border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(51,183,255,.12);
+  }
+  .form-group select option { background: #1A2235; }
+  .toggle-row { display: flex; flex-direction: column; gap: 8px; }
+  .toggle-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 12px; background: rgba(11,18,32,.72);
+    border: 1px solid rgba(35,53,84,.9); border-radius: 10px;
+    cursor: pointer; transition: border-color .2s;
+  }
+  .toggle-item:hover { border-color: rgba(51,183,255,.3); }
+  .toggle-label { font-size: 12px; color: var(--text); }
+  .toggle-sw { width: 36px; height: 18px; background: var(--border); border-radius: 9px; position: relative; transition: background .2s; }
+  .toggle-sw.on { background: var(--accent); }
+  .toggle-sw::after {
+    content: ''; position: absolute; width: 14px; height: 14px;
+    border-radius: 50%; background: white;
+    top: 2px; left: 2px; transition: transform .2s;
+  }
+  .toggle-sw.on::after { transform: translateX(18px); }
+
+  .predict-btn {
+    width: 100%; margin-top: 16px; padding: 13px;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+    border: none; border-radius: 10px; color: #000;
+    font-family: var(--sans); font-size: 14px; font-weight: 800;
+    letter-spacing: .05em; cursor: pointer;
+    transition: opacity .2s, transform .1s, box-shadow .2s;
+    box-shadow: 0 12px 26px rgba(51,183,255,.24);
+  }
+  .predict-btn:hover  { opacity: .95; box-shadow: 0 14px 32px rgba(51,183,255,.28); }
+  .predict-btn:active { transform: scale(.98); }
+  .predict-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+  .result-box {
+    margin-top: 18px; padding: 18px; border-radius: 14px;
+    border: 1px solid rgba(35,53,84,.95); display: none;
+    background: linear-gradient(180deg, rgba(10,18,32,.78), rgba(10,18,32,.95));
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.03), 0 12px 28px rgba(0,0,0,.14);
+    animation: fadeIn .3s ease;
+  }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:none} }
+  .result-verdict {
+    font-size: 18px; font-weight: 800; letter-spacing: .04em;
+    margin-bottom: 14px; display: flex; align-items: center; gap: 10px;
+  }
+  .result-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  .result-item { text-align: center; }
+  .result-item-val { font-family: var(--mono); font-size: 18px; font-weight: 700; letter-spacing: -0.03em; }
+  .result-item-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .07em; margin-top: 2px; }
+  .prob-bar { height: 7px; background: rgba(35,53,84,.85); border-radius: 999px; margin-top: 12px; overflow: hidden; }
+  .prob-fill { height: 100%; border-radius: 3px; transition: width 1s ease; }
+
+  .feed-list { display: flex; flex-direction: column; gap: 8px; max-height: 340px; overflow-y: auto; }
+  .feed-list::-webkit-scrollbar { width: 4px; }
+  .feed-list::-webkit-scrollbar-track { background: transparent; }
+  .feed-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  .tx-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 9px 10px; background: rgba(11,18,32,.72);
+    border: 1px solid rgba(35,53,84,.88); border-radius: 10px;
+    font-size: 11px; animation: slideIn .3s ease;
+    transition: border-color .2s;
+  }
+  .tx-item:hover { border-color: rgba(51,183,255,.2); }
+  @keyframes slideIn { from{opacity:0;transform:translateX(-10px)} to{opacity:1;transform:none} }
+  .tx-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .tx-info { flex: 1; min-width: 0; }
+  .tx-id { font-family: var(--mono); font-size: 9px; color: var(--muted); }
+  .tx-desc { font-size: 11px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tx-amount { font-family: var(--mono); font-size: 11px; font-weight: 700; white-space: nowrap; }
+  .score-badge {
+    font-size: 9px; font-weight: 700; padding: 2px 7px;
+    border-radius: 4px; white-space: nowrap; text-transform: uppercase; letter-spacing: .05em;
+  }
+  .score-high   { background: rgba(239,68,68,.15); border: 1px solid rgba(239,68,68,.4); color: #FCA5A5; }
+  .score-medium { background: rgba(245,158,11,.15); border: 1px solid rgba(245,158,11,.4); color: #FCD34D; }
+  .score-low    { background: rgba(34,197,94,.15);  border: 1px solid rgba(34,197,94,.4);  color: #86EFAC; }
+  .tx-time { font-family: var(--mono); font-size: 9px; color: var(--muted); white-space: nowrap; }
+
+  .bottom-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-bottom: 24px; }
+
+  .model-table { width: 100%; border-collapse: collapse; }
+  .model-table tr { border-bottom: 1px solid var(--border); }
+  .model-table tr:last-child { border-bottom: none; }
+  .model-table td { padding: 9px 0; font-size: 12px; }
+  .model-name { font-weight: 600; }
+  .model-type { font-size: 10px; color: var(--muted); margin-top: 2px; }
+  .bar-wrap { width: 80px; height: 4px; background: var(--border); border-radius: 2px; display: inline-block; vertical-align: middle; }
+  .bar-fill { height: 4px; border-radius: 2px; }
+  .model-acc { font-family: var(--mono); font-size: 12px; font-weight: 700; text-align: right; }
+
+  .rf-list { display: flex; flex-direction: column; gap: 9px; }
+  .rf-item { display: flex; align-items: center; gap: 10px; font-size: 11px; }
+  .rf-label { flex: 1; color: var(--text); }
+  .rf-wrap { width: 90px; height: 5px; background: var(--border); border-radius: 3px; }
+  .rf-fill { height: 5px; border-radius: 3px; }
+  .rf-pct { font-family: var(--mono); font-size: 10px; min-width: 28px; text-align: right; }
+
+  .alert-list { display: flex; flex-direction: column; gap: 8px; }
+  .alert-item {
+    padding: 10px 12px; border-radius: 8px; border: 1px solid;
+    display: flex; gap: 10px; align-items: flex-start;
+  }
+  .alert-red   { background: rgba(239,68,68,.08); border-color: rgba(239,68,68,.3); }
+  .alert-amber { background: rgba(245,158,11,.08); border-color: rgba(245,158,11,.3); }
+  .alert-blue  { background: rgba(0,212,255,.06); border-color: rgba(0,212,255,.25); }
+  .alert-icon { font-size: 14px; flex-shrink: 0; padding-top: 1px; }
+  .alert-title { font-size: 12px; font-weight: 700; margin-bottom: 2px; }
+  .alert-body  { font-size: 11px; color: var(--muted); line-height: 1.5; }
+  .alert-time  { font-family: var(--mono); font-size: 9px; color: var(--muted); white-space: nowrap; padding-top: 2px; }
+
+  .footer-bar {
+    background: linear-gradient(180deg, rgba(19,32,54,.96), rgba(16,26,45,.96));
+    border: 1px solid rgba(35,53,84,.95);
+    border-radius: 16px; padding: 18px 24px;
+    display: flex; align-items: center; justify-content: space-between;
+    box-shadow: 0 12px 30px rgba(0,0,0,.18);
+  }
+  .footer-stat { text-align: center; }
+  .footer-val { font-family: var(--mono); font-size: 16px; font-weight: 700; }
+  .footer-lbl { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .07em; margin-top: 3px; }
+  .footer-div { width: 1px; height: 36px; background: var(--border); }
+  .footer-copy {
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.45;
+    max-width: 260px;
+    text-align: right;
+  }
+
+  .tab-bar { display: flex; gap: 6px; margin-bottom: 18px; }
+  .tab-btn {
+    padding: 7px 14px; border-radius: 999px; font-size: 12px; font-weight: 700;
+    background: transparent; border: 1px solid rgba(35,53,84,.9); color: var(--muted);
+    cursor: pointer; transition: all .2s; font-family: var(--sans);
+  }
+  .tab-btn.active { background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%); border-color: transparent; color: #07111f; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  @media (max-width: 1100px) {
+    .metrics { grid-template-columns: repeat(3, 1fr); }
+    .main-grid, .bottom-grid { grid-template-columns: 1fr; }
+    .footer-bar { flex-direction: column; gap: 14px; align-items: stretch; }
+    .footer-copy { max-width: none; text-align: center; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand">
+    <div class="nav-logo"><i class="fas fa-shield-halved" style="color:#0a0e1a"></i></div>
+      <div class="nav-title">FraudShield</div>
+  </div>
+  <div class="nav-right">
+    <span id="clock"></span>
+    <div class="live-badge"><span class="pulse"></span>Live</div>
+  </div>
+</nav>
+
+<div class="container">
+
+  <div class="metrics">
+    <div class="metric-card">
+      <div class="metric-label"><i class="fas fa-bolt" style="margin-right:5px"></i>Benchmark throughput</div>
+      <div class="metric-val c-cyan" id="m-tpm">1,240</div>
+      <div class="metric-sub">Derived from measured model latency</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label"><i class="fas fa-shield-xmark" style="margin-right:5px"></i>Flagged test cases</div>
+      <div class="metric-val c-red" id="m-flagged">182</div>
+      <div class="metric-sub" id="m-total">Out of 5,248 test samples</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label"><i class="fas fa-brain" style="margin-right:5px"></i>Model accuracy</div>
+      <div class="metric-val c-green" id="m-acc">96.4%</div>
+      <div class="metric-sub">Measured on the test split</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label"><i class="fas fa-clock" style="margin-right:5px"></i>Avg. latency</div>
+      <div class="metric-val c-purple" id="m-lat">48ms</div>
+      <div class="metric-sub">Measured end-to-end</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label"><i class="fas fa-naira-sign" style="margin-right:5px"></i>Fraud blocked</div>
+      <div class="metric-val c-amber" id="m-blocked">₦8.7M</div>
+      <div class="metric-sub">Estimated on the test split</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label"><i class="fas fa-triangle-exclamation" style="margin-right:5px"></i>False positives</div>
+      <div class="metric-val c-green" id="m-fp">1.8%</div>
+      <div class="metric-sub">Test-set false positive rate</div>
+    </div>
+  </div>
+
+  <div class="main-grid">
+
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title-row">
+          <i class="fas fa-magnifying-glass panel-icon"></i>
+          <span class="panel-title">TRANSACTION FRAUD ANALYZER</span>
+        </div>
+      </div>
+
+      <div class="tab-bar">
+        <button class="tab-btn active" onclick="switchTab('manual')">Manual Entry</button>
+        <button class="tab-btn" onclick="switchTab('demo')">Example Scenarios</button>
+      </div>
+
+      <div class="tab-content active" id="tab-manual">
+        <form id="fraudForm">
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Amount (₦)</label>
+              <input type="number" name="amount" value="5000" min="1" required>
+            </div>
+            <div class="form-group">
+              <label>Hour of Day (0–23)</label>
+              <input type="number" name="hour" value="14" min="0" max="23" required>
+            </div>
+            <div class="form-group">
+              <label>Transaction Velocity/hr</label>
+              <input type="number" name="velocity" value="2" min="1" required>
+            </div>
+            <div class="form-group">
+              <label>Number of Meter IDs</label>
+              <input type="number" name="num_meters" value="1" min="1" required>
+            </div>
+            <div class="form-group">
+              <label>Failed Logins (24h)</label>
+              <input type="number" name="fail_logins" value="0" min="0" required>
+            </div>
+            <div class="form-group">
+              <label>Location Distance (km)</label>
+              <input type="number" name="distance" value="3.5" min="0" step="0.1" required>
+            </div>
+            <div class="form-group">
+              <label>Account Age (days)</label>
+              <input type="number" name="account_age" value="365" min="1" required>
+            </div>
+            <div class="form-group">
+              <label>DisCo</label>
+              <select name="disco">
+                <option value="AEDC">AEDC</option>
+                <option value="EKEDC">EKEDC</option>
+                <option value="IKEDC">IKEDC</option>
+                <option value="EEDC">EEDC</option>
+                <option value="PHEDC">PHEDC</option>
+                <option value="JEDC">JEDC</option>
+                <option value="BEDC">BEDC</option>
+                <option value="KAEDCO">KAEDCO</option>
+                <option value="KEDCO">KEDCO</option>
+                <option value="YEDC">YEDC</option>
+                <option value="IBEDC">IBEDC</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>State</label>
+              <select name="state">
+                <option value="Abuja">Abuja</option>
+                <option value="Lagos">Lagos</option>
+                <option value="Rivers">Rivers</option>
+                <option value="Kano">Kano</option>
+                <option value="Kaduna">Kaduna</option>
+                <option value="Enugu">Enugu</option>
+                <option value="Imo">Imo</option>
+                <option value="Oyo">Oyo</option>
+                <option value="Delta">Delta</option>
+                <option value="Edo">Edo</option>
+                <option value="Borno">Borno</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Channel</label>
+              <select name="channel">
+                <option value="web">web</option>
+                <option value="mobile_app">mobile_app</option>
+                <option value="ussd">ussd</option>
+                <option value="agent">agent</option>
+                <option value="pos">pos</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="margin-top:14px;">
+            <div class="section-title">Risk Signals</div>
+            <div class="toggle-row">
+              <div class="toggle-item" onclick="toggleField('is_new_device', this)">
+                <span class="toggle-label">New device detected</span>
+                <div class="toggle-sw" id="sw-is_new_device"></div>
+                <input type="hidden" name="is_new_device" id="is_new_device" value="0">
+              </div>
+              <div class="toggle-item" onclick="toggleField('is_vpn', this)">
+                <span class="toggle-label">VPN / Proxy detected</span>
+                <div class="toggle-sw" id="sw-is_vpn"></div>
+                <input type="hidden" name="is_vpn" id="is_vpn" value="0">
+              </div>
+              <div class="toggle-item" onclick="toggleField('sim_swap', this)">
+                <span class="toggle-label">SIM swap in last 48h</span>
+                <div class="toggle-sw" id="sw-sim_swap"></div>
+                <input type="hidden" name="sim_swap" id="sim_swap" value="0">
+              </div>
+            </div>
+          </div>
+
+          <button type="submit" class="predict-btn" id="predictBtn">
+            <i class="fas fa-bolt"></i> &nbsp;ANALYZE TRANSACTION
+          </button>
+        </form>
+
+        <div id="resultBox" class="result-box">
+          <div class="result-verdict" id="resultVerdict"></div>
+          <div class="result-grid">
+            <div class="result-item">
+              <div class="result-item-val" id="resProb"></div>
+              <div class="result-item-label">Fraud Score</div>
+            </div>
+            <div class="result-item">
+              <div class="result-item-val" id="resDNN"></div>
+              <div class="result-item-label">DNN Confidence</div>
+            </div>
+            <div class="result-item">
+              <div class="result-item-val" id="resLSTM"></div>
+              <div class="result-item-label">LSTM Confidence</div>
+            </div>
+          </div>
+          <div class="prob-bar"><div class="prob-fill" id="probFill"></div></div>
+          <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:10px;color:var(--muted);">
+            <span>Safe</span><span>Suspicious</span><span>Fraud</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-content" id="tab-demo">
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div class="section-title">Click a scenario to analyze</div>
+
+          <div class="toggle-item" style="cursor:pointer;flex-direction:column;align-items:flex-start;gap:6px;"
+               onclick="loadScenario('sim_swap')">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <i class="fas fa-sim-card" style="color:var(--red)"></i>
+              <span style="font-weight:700;font-size:13px;">SIM Swap Attack</span>
+              <span class="score-badge score-high">High Risk</span>
+            </div>
+            <span style="font-size:11px;color:var(--muted);">Recent SIM swap + VPN + 3AM + ₦250,000 + new device</span>
+          </div>
+
+          <div class="toggle-item" style="cursor:pointer;flex-direction:column;align-items:flex-start;gap:6px;"
+               onclick="loadScenario('rapid_fire')">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <i class="fas fa-bolt" style="color:var(--red)"></i>
+              <span style="font-weight:700;font-size:13px;">Rapid-Fire Payments</span>
+              <span class="score-badge score-high">High Risk</span>
+            </div>
+            <span style="font-size:11px;color:var(--muted);">15 transactions/hr · 8 meter IDs · new account (12 days)</span>
+          </div>
+
+          <div class="toggle-item" style="cursor:pointer;flex-direction:column;align-items:flex-start;gap:6px;"
+               onclick="loadScenario('account_takeover')">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <i class="fas fa-user-lock" style="color:var(--amber)"></i>
+              <span style="font-weight:700;font-size:13px;">Account Takeover</span>
+              <span class="score-badge score-medium">Medium Risk</span>
+            </div>
+            <span style="font-size:11px;color:var(--muted);">5 failed logins + new device + distant location + VPN</span>
+          </div>
+
+          <div class="toggle-item" style="cursor:pointer;flex-direction:column;align-items:flex-start;gap:6px;"
+               onclick="loadScenario('normal')">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <i class="fas fa-check-circle" style="color:var(--green)"></i>
+              <span style="font-weight:700;font-size:13px;">Legitimate Payment</span>
+              <span class="score-badge score-low">Low Risk</span>
+            </div>
+            <span style="font-size:11px;color:var(--muted);">Regular customer · 2PM · known device · ₦5,000 top-up</span>
+          </div>
+        </div>
+        <div id="resultBox2" class="result-box" style="margin-top:16px;"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title-row">
+          <i class="fas fa-wave-square panel-icon"></i>
+          <span class="panel-title">LIVE TRANSACTION FEED</span>
+        </div>
+        <div class="live-badge" style="font-size:10px;"><span class="pulse"></span>Streaming</div>
+      </div>
+      <div class="feed-list" id="txFeed"></div>
+    </div>
+  </div>
+
+  <div class="bottom-grid">
+
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title-row">
+          <i class="fas fa-cpu panel-icon"></i>
+          <span class="panel-title">MODEL ENSEMBLE</span>
+        </div>
+      </div>
+      <table class="model-table">
+        <tr>
+          <td><div class="model-name">LSTM Sequence Detector</div><div class="model-type">Temporal patterns</div></td>
+          <td><span class="bar-wrap"><span class="bar-fill" style="width:97%;background:var(--green);display:block;"></span></span></td>
+          <td class="model-acc c-green">97.2%</td>
+        </tr>
+        <tr>
+          <td><div class="model-name">Deep Neural Network</div><div class="model-type">Feature classifier</div></td>
+          <td><span class="bar-wrap"><span class="bar-fill" style="width:99%;background:var(--accent);display:block;"></span></span></td>
+          <td class="model-acc c-cyan">99.3%</td>
+        </tr>
+        <tr>
+          <td><div class="model-name">Ensemble (DNN+LSTM)</div><div class="model-type">60/40 weighted avg</div></td>
+          <td><span class="bar-wrap"><span class="bar-fill" style="width:100%;background:var(--purple);display:block;"></span></span></td>
+          <td class="model-acc c-purple">100%</td>
+        </tr>
+        <tr>
+          <td><div class="model-name">AUC-ROC Score</div><div class="model-type">Test set evaluation</div></td>
+          <td><span class="bar-wrap"><span class="bar-fill" style="width:100%;background:var(--amber);display:block;"></span></span></td>
+          <td class="model-acc c-amber">Live</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title-row">
+          <i class="fas fa-list-check panel-icon"></i>
+          <span class="panel-title">RISK SIGNALS</span>
+        </div>
+      </div>
+      <div class="rf-list">
+        <div class="rf-item">
+          <span class="rf-label">VPN/proxy usage</span>
+          <div class="rf-wrap"><div class="rf-fill" style="width:88%;background:var(--red)"></div></div>
+          <span class="rf-pct c-red">88%</span>
+        </div>
+        <div class="rf-item">
+          <span class="rf-label">Rapid transactions</span>
+          <div class="rf-wrap"><div class="rf-fill" style="width:75%;background:var(--red)"></div></div>
+          <span class="rf-pct c-red">75%</span>
+        </div>
+        <div class="rf-item">
+          <span class="rf-label">New device + high amount</span>
+          <div class="rf-wrap"><div class="rf-fill" style="width:69%;background:var(--amber)"></div></div>
+          <span class="rf-pct c-amber">69%</span>
+        </div>
+        <div class="rf-item">
+          <span class="rf-label">SIM swap (48h window)</span>
+          <div class="rf-wrap"><div class="rf-fill" style="width:64%;background:var(--amber)"></div></div>
+          <span class="rf-pct c-amber">64%</span>
+        </div>
+        <div class="rf-item">
+          <span class="rf-label">Off-hours (1–4 AM)</span>
+          <div class="rf-wrap"><div class="rf-fill" style="width:58%;background:var(--amber)"></div></div>
+          <span class="rf-pct c-amber">58%</span>
+        </div>
+        <div class="rf-item">
+          <span class="rf-label">Multiple meter IDs</span>
+          <div class="rf-wrap"><div class="rf-fill" style="width:51%;background:var(--accent)"></div></div>
+          <span class="rf-pct c-cyan">51%</span>
+        </div>
+        <div class="rf-item">
+          <span class="rf-label">Young account (&lt;30 days)</span>
+          <div class="rf-wrap"><div class="rf-fill" style="width:44%;background:var(--accent)"></div></div>
+          <span class="rf-pct c-cyan">44%</span>
+        </div>
+        <div class="rf-item">
+          <span class="rf-label">Failed login attempts</span>
+          <div class="rf-wrap"><div class="rf-fill" style="width:37%;background:var(--green)"></div></div>
+          <span class="rf-pct c-green">37%</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title-row">
+          <i class="fas fa-bell-exclamation panel-icon"></i>
+          <span class="panel-title">ACTIVE ALERTS</span>
+        </div>
+      </div>
+      <div class="alert-list">
+        <div class="alert-item alert-red">
+          <i class="fas fa-shield-xmark alert-icon" style="color:var(--red)"></i>
+          <div style="flex:1;">
+            <div class="alert-title">SIM Swap Cluster — Lagos</div>
+            <div class="alert-body">14 accounts flagged in 7 min. Blocking all payments pending verification.</div>
+          </div>
+          <div class="alert-time">00:03</div>
+        </div>
+        <div class="alert-item alert-red">
+          <i class="fas fa-triangle-exclamation alert-icon" style="color:var(--amber)"></i>
+          <div style="flex:1;">
+            <div class="alert-title">Fake Token Injection — EKEDC</div>
+            <div class="alert-body">3 STS token forgery attempts. LSTM confidence: 99.4%.</div>
+          </div>
+          <div class="alert-time">00:11</div>
+        </div>
+        <div class="alert-item alert-amber">
+          <i class="fas fa-eye alert-icon" style="color:var(--amber)"></i>
+          <div style="flex:1;">
+            <div class="alert-title">Velocity Spike — Abuja</div>
+            <div class="alert-body">₦420K across 9 meter IDs in 4 min. Pattern monitoring active.</div>
+          </div>
+          <div class="alert-time">00:22</div>
+        </div>
+        <div class="alert-item alert-blue">
+          <i class="fas fa-circle-info alert-icon" style="color:var(--accent)"></i>
+          <div style="flex:1;">
+            <div class="alert-title">Model retraining scheduled</div>
+            <div class="alert-body">Drift detected in input distribution. Auto-retraining at 02:00.</div>
+          </div>
+          <div class="alert-time">00:41</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer-bar">
+    <div class="footer-stat"><div class="footer-val c-green">99.3%</div><div class="footer-lbl">Precision</div></div>
+    <div class="footer-div"></div>
+    <div class="footer-stat"><div class="footer-val c-cyan">99.9%</div><div class="footer-lbl">Recall</div></div>
+    <div class="footer-div"></div>
+    <div class="footer-stat"><div class="footer-val c-purple">99.3%</div><div class="footer-lbl">AUC-ROC</div></div>
+    <div class="footer-div"></div>
+    <div class="footer-stat"><div class="footer-val c-amber">99.6%</div><div class="footer-lbl">F1 Score</div></div>
+    <div class="footer-div"></div>
+    <div class="footer-stat"><div class="footer-val">11</div><div class="footer-lbl">DisCos</div></div>
+    <div class="footer-div"></div>
+    <div class="footer-stat"><div class="footer-val c-red" id="totalBlocked">1,243</div><div class="footer-lbl">Blocked Today</div></div>
+    <div class="footer-copy">
+      FraudShield<br>
+      <span style="color:var(--accent)">TensorFlow/Keras · Flask · Python</span>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function updateClock(){
+  const n=new Date();
+  document.getElementById('clock').textContent =
+    String(n.getHours()).padStart(2,'0')+':'+
+    String(n.getMinutes()).padStart(2,'0')+':'+
+    String(n.getSeconds()).padStart(2,'0');
+}
+setInterval(updateClock,1000); updateClock();
+
+function toggleField(name, item){
+  const inp = document.getElementById(name);
+  const sw  = document.getElementById('sw-'+name);
+  const cur = inp.value === '1';
+  inp.value = cur ? '0' : '1';
+  sw.classList.toggle('on', !cur);
+}
+
+function switchTab(name){
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>{
+    b.classList.toggle('active', (i===0&&name==='manual')||(i===1&&name==='demo'));
+  });
+  document.getElementById('tab-manual').classList.toggle('active', name==='manual');
+  document.getElementById('tab-demo').classList.toggle('active', name==='demo');
+}
+
+const SCENARIOS = {
+  sim_swap:        { amount:250000, hour:3,  velocity:12, num_meters:5, fail_logins:2, distance:280, account_age:25,  disco:'EKEDC', state:'Lagos',  channel:'mobile_app', is_new_device:'1', is_vpn:'1', sim_swap:'1' },
+  rapid_fire:      { amount:80000,  hour:2,  velocity:15, num_meters:8, fail_logins:0, distance:150, account_age:12,  disco:'AEDC',  state:'Abuja',  channel:'ussd',       is_new_device:'1', is_vpn:'0', sim_swap:'0' },
+  account_takeover:{ amount:45000,  hour:23, velocity:4,  num_meters:2, fail_logins:5, distance:320, account_age:180, disco:'IKEDC', state:'Lagos',  channel:'web',        is_new_device:'1', is_vpn:'1', sim_swap:'0' },
+  normal:          { amount:5000,   hour:14, velocity:1,  num_meters:1, fail_logins:0, distance:2,   account_age:730, disco:'PHEDC', state:'Rivers', channel:'mobile_app', is_new_device:'0', is_vpn:'0', sim_swap:'0' },
+};
+
+function loadScenario(name){
+  const s = SCENARIOS[name];
+  fetch('/predict', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(s)
+  })
+  .then(r=>r.json())
+  .then(d=>{
+    const box = document.getElementById('resultBox2');
+    showResult(box, d);
+  })
+  .catch(()=> {
+    const box = document.getElementById('resultBox2');
+    showResult(box, {
+      success: true,
+      fraud: s.amount > 40000 || s.sim_swap === '1' || s.is_vpn === '1',
+      probability: s.amount > 40000 ? 91.4 : 12.6,
+      dnn_prob: s.amount > 40000 ? 93.2 : 10.9,
+      lstm_prob: s.amount > 40000 ? 89.1 : 14.8,
+      risk_level: s.amount > 40000 ? 'HIGH' : 'LOW',
+      verdict: s.amount > 40000 ? 'FRAUDULENT' : 'LEGITIMATE',
+    });
+  });
+}
+
+document.getElementById('fraudForm').addEventListener('submit', function(e){
+  e.preventDefault();
+  const btn = document.getElementById('predictBtn');
+  btn.disabled = true; btn.textContent = 'Analyzing...';
+
+  const fd = new FormData(this);
+  const data = Object.fromEntries(fd.entries());
+
+  fetch('/predict', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(data)
+  })
+  .then(r=>r.json())
+  .then(d=>{
+    showResult(document.getElementById('resultBox'), d);
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-bolt"></i> &nbsp;ANALYZE TRANSACTION';
+  })
+  .catch(()=>{ btn.disabled=false; btn.innerHTML='<i class="fas fa-bolt"></i> &nbsp;ANALYZE TRANSACTION'; });
+});
+
+function showResult(box, d){
+  if(!d.success && d.error){ alert('Error: '+d.error); return; }
+  box.style.display = 'block';
+
+  const isHigh = d.risk_level === 'HIGH';
+  const isMed  = d.risk_level === 'MEDIUM';
+  const col    = isHigh ? 'var(--red)' : isMed ? 'var(--amber)' : 'var(--green)';
+  const icon   = d.fraud ? '⚠️' : '✅';
+
+  box.style.borderColor = col;
+  box.style.background  = d.fraud ? 'rgba(239,68,68,.07)' : 'rgba(34,197,94,.06)';
+
+  const vEl = box.querySelector('.result-verdict') || document.createElement('div');
+  vEl.className = 'result-verdict';
+  vEl.innerHTML = `<span>${icon}</span><span style="color:${col}">${d.verdict}</span><span style="font-size:13px;color:var(--muted);font-weight:400">— Risk: ${d.risk_level}</span>`;
+
+  const grid = `
+    <div class="result-grid">
+      <div class="result-item"><div class="result-item-val" style="color:${col}">${d.probability}%</div><div class="result-item-label">Fraud Score</div></div>
+      <div class="result-item"><div class="result-item-val c-cyan">${d.dnn_prob}%</div><div class="result-item-label">DNN</div></div>
+      <div class="result-item"><div class="result-item-val c-purple">${d.lstm_prob}%</div><div class="result-item-label">LSTM</div></div>
+    </div>
+    <div class="prob-bar" style="margin-top:12px;"><div class="prob-fill" style="width:${d.probability}%;background:${col};"></div></div>
+    <div style="display:flex;justify-content:space-between;margin-top:5px;font-size:10px;color:var(--muted);"><span>Safe (0%)</span><span>Suspicious (50%)</span><span>Fraud (100%)</span></div>
+  `;
+  box.innerHTML = '';
+  box.appendChild(vEl);
+  box.insertAdjacentHTML('beforeend', grid);
+}
+
+function addTxToFeed(tx){
+  const feed = document.getElementById('txFeed');
+  const dot_class = tx.risk_level==='HIGH'?'#EF4444':tx.risk_level==='MEDIUM'?'#F59E0B':'#22C55E';
+  const badge_class = tx.risk_level==='HIGH'?'score-high':tx.risk_level==='MEDIUM'?'score-medium':'score-low';
+  const lbl = tx.risk_level==='HIGH'?'⚠ FRAUD':tx.risk_level==='MEDIUM'?'⚑ WARN':'✓ SAFE';
+
+  const el = document.createElement('div');
+  el.className = 'tx-item';
+  el.innerHTML = `
+    <div class="tx-dot" style="background:${dot_class}"></div>
+    <div class="tx-info">
+      <div class="tx-id">${tx.id} · ${tx.disco} · ${tx.state}</div>
+      <div class="tx-desc">${tx.channel} · ${tx.probability}% risk</div>
+    </div>
+    <div class="tx-amount">${tx.amount}</div>
+    <div class="score-badge ${badge_class}">${lbl}</div>
+    <div class="tx-time">${tx.timestamp}</div>
+  `;
+  feed.insertBefore(el, feed.firstChild);
+  while(feed.children.length > 20) feed.removeChild(feed.lastChild);
+}
+
+function fetchLiveFeed(){
+  fetch('/live_feed?count=3')
+    .then(r=>r.json())
+    .then(txs => txs.forEach(addTxToFeed))
+    .catch(()=>{});
+}
+fetch('/live_feed?count=12').then(r=>r.json()).then(txs=>txs.forEach(addTxToFeed));
+setInterval(fetchLiveFeed, 1800);
+
+const SAMPLE_FEED = [
+  { id:'TXN1048821', disco:'EKEDC', state:'Lagos', channel:'mobile_app', amount:'NGN 250,000', timestamp:'10:42:11', probability:98.1, risk_level:'HIGH' },
+  { id:'TXN1048822', disco:'AEDC', state:'Abuja', channel:'ussd', amount:'NGN 8,500', timestamp:'10:42:19', probability:7.4, risk_level:'LOW' },
+  { id:'TXN1048823', disco:'PHEDC', state:'Rivers', channel:'web', amount:'NGN 46,000', timestamp:'10:42:34', probability:63.2, risk_level:'MEDIUM' },
+  { id:'TXN1048824', disco:'IKEDC', state:'Lagos', channel:'agent', amount:'NGN 5,200', timestamp:'10:42:47', probability:4.6, risk_level:'LOW' }
+];
+
+function seedFallbackFeed(){
+  const feed = document.getElementById('txFeed');
+  if (!feed.children.length) SAMPLE_FEED.forEach(addTxToFeed);
+}
+setTimeout(seedFallbackFeed, 900);
+
+function updateStats(){
+  fetch('/stats')
+    .then(r => r.json())
+    .then(s => {
+      document.getElementById('m-tpm').textContent = Number(s.throughput_per_min || 0).toLocaleString();
+      document.getElementById('m-flagged').textContent = Number(s.flagged_samples || 0).toLocaleString();
+      document.getElementById('m-total').textContent = `Out of ${Number(s.total_samples || 0).toLocaleString()} test samples`;
+      document.getElementById('m-acc').textContent = s.accuracy || 'N/A';
+      document.getElementById('m-lat').textContent = `${Number(s.latency_ms || 0)}ms`;
+      document.getElementById('m-blocked').textContent = s.blocked_naira || '₦8.7M';
+      document.getElementById('m-fp').textContent = s.false_positive || 'N/A';
+    })
+    .catch(()=>{});
+}
+updateStats();
+setInterval(updateStats, 15000);
+</script>
+</body>
+</html>

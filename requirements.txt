@@ -1,0 +1,8 @@
+# Use Python 3.10-3.13. TensorFlow 2.21 does not support Python 3.14 yet.
+tensorflow==2.21.0
+scikit-learn==1.6.1
+pandas==2.2.3
+numpy==1.26.4
+joblib==1.4.2
+imbalanced-learn==0.13.0
+matplotlib
