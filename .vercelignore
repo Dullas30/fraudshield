@@ -1,0 +1,11 @@
+# The presentation deployment serves the frontend only.
+app.py
+requirements.txt
+train.py
+generate_data.py
+generate_roc_curve.py
+generate_mockup.ps1
+data/
+model/
+__pycache__/
+*.pyc
