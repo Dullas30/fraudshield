@@ -1,0 +1,9 @@
+{
+  "name": "fraudshield",
+  "private": true,
+  "version": "1.0.0",
+  "description": "FraudShield demo — static frontend plus Node serverless API functions for the hosted Vercel deployment.",
+  "engines": {
+    "node": ">=18"
+  }
+}

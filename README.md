@@ -5,7 +5,7 @@ It uses synthetic data, trains a real DNN and LSTM, combines them in a 60/40 ens
 
 There are two ways to run it:
 
-- **Live/hosted (Vercel)** — `index.html` is served as a static page, and `/api/predict`, `/api/live_feed`, and `/api/stats` are Vercel Python serverless functions (`api/*.py`) that use the same rule-based scoring heuristic `app.py` falls back to. This keeps the deployment tiny and fast — no TensorFlow, no model files, no cold starts.
+- **Live/hosted (Vercel)** — `index.html` is served as a static page, and `/api/predict`, `/api/live_feed`, and `/api/stats` are Vercel **Node.js** serverless functions (`api/*.js`) that use the same rule-based scoring heuristic `app.py` falls back to. This keeps the deployment tiny and fast — no TensorFlow, no model files, no cold starts, and no Python-runtime entrypoint ambiguity. The frontend also has a client-side JS fallback (`clientPredict` in `index.html`) that runs the same math if a request ever fails, so the demo never shows a blank result.
 - **Local full stack** — `python app.py` serves `index.html` and loads the real trained DNN/LSTM ensemble from `model/` for genuine ML inference (falling back to the same heuristic if the models or their dependencies aren't available).
 
 ## Deploying to GitHub + Vercel
@@ -23,7 +23,7 @@ There are two ways to run it:
 
 2. Go to [vercel.com/new](https://vercel.com/new), import the GitHub repo, and click **Deploy** — no configuration needed.
 
-   - Vercel auto-detects `index.html` as the static site and the files in `api/` as Python serverless functions.
+   - Vercel auto-detects `index.html` as the static site and the files in `api/*.js` as Node.js serverless functions (zero-config, no `vercel.json` needed).
    - The heavier local-only files (`app.py`, `train.py`, `data/`, `model/`, etc.) are excluded from the deployment via `.vercelignore`, so the deployed site is only a few MB.
    - Once deployed, the site is fully interactive: the manual form, scenario buttons, live feed, and dashboard stats all hit the `/api/*` functions for real (simulated) responses.
 

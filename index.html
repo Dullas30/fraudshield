@@ -703,29 +703,64 @@ const SCENARIOS = {
   normal:          { amount:5000,   hour:14, velocity:1,  num_meters:1, fail_logins:0, distance:2,   account_age:730, disco:'PHEDC', state:'Rivers', channel:'mobile_app', is_new_device:'0', is_vpn:'0', sim_swap:'0' },
 };
 
+// Client-side fallback scorer — mirrors the rule-based logic in
+// api/predict.js. Used only if the /api/predict call fails for any
+// reason, so the demo always shows a result instead of going blank.
+function clamp01(v, lo, hi){ return Math.max(lo, Math.min(hi, v)); }
+
+function clientPredict(raw){
+  const num = (v, d=0) => { const n = Number(v); return Number.isFinite(n) ? n : d; };
+  const amount      = num(raw.amount);
+  const hour        = num(raw.hour);
+  const velocity    = num(raw.velocity);
+  const isNew       = num(raw.is_new_device);
+  const isVpn       = num(raw.is_vpn);
+  const simSwap     = num(raw.sim_swap);
+  const numMeters   = num(raw.num_meters);
+  const failLogins  = num(raw.fail_logins);
+  const distance    = num(raw.distance);
+  const accountAge  = num(raw.account_age);
+
+  const night = (hour < 6 || hour >= 22) ? 1 : 0;
+  const base =
+    clamp01(Math.log1p(amount) / 13.0, 0, 1) * 0.24 +
+    clamp01(velocity / 20.0, 0, 1)            * 0.16 +
+    isVpn                                     * 0.16 +
+    simSwap                                   * 0.14 +
+    isNew                                     * 0.10 +
+    night                                     * 0.08 +
+    clamp01(failLogins / 8.0, 0, 1)           * 0.06 +
+    clamp01(numMeters / 10.0, 0, 1)           * 0.04 +
+    (1 - clamp01(accountAge / 3650.0, 0, 1))  * 0.04 +
+    clamp01(distance / 500.0, 0, 1)           * 0.02;
+
+  const dnnP  = clamp01(base * 0.95 + 0.02, 0, 1);
+  const lstmP = clamp01(base * 0.90 + 0.04, 0, 1);
+  const ensemble = dnnP * 0.6 + lstmP * 0.4;
+  const fraud = ensemble >= 0.5;
+  const level = ensemble > 0.7 ? 'HIGH' : ensemble > 0.4 ? 'MEDIUM' : 'LOW';
+
+  return {
+    success: true,
+    fraud,
+    probability: Math.round(ensemble * 10000) / 100,
+    dnn_prob: Math.round(dnnP * 10000) / 100,
+    lstm_prob: Math.round(lstmP * 10000) / 100,
+    risk_level: level,
+    verdict: fraud ? 'FRAUDULENT' : 'LEGITIMATE',
+  };
+}
+
 function loadScenario(name){
   const s = SCENARIOS[name];
+  const box = document.getElementById('resultBox2');
   fetch('/api/predict', {
     method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify(s)
   })
-  .then(r=>r.json())
-  .then(d=>{
-    const box = document.getElementById('resultBox2');
-    showResult(box, d);
-  })
-  .catch(()=> {
-    const box = document.getElementById('resultBox2');
-    showResult(box, {
-      success: true,
-      fraud: s.amount > 40000 || s.sim_swap === '1' || s.is_vpn === '1',
-      probability: s.amount > 40000 ? 91.4 : 12.6,
-      dnn_prob: s.amount > 40000 ? 93.2 : 10.9,
-      lstm_prob: s.amount > 40000 ? 89.1 : 14.8,
-      risk_level: s.amount > 40000 ? 'HIGH' : 'LOW',
-      verdict: s.amount > 40000 ? 'FRAUDULENT' : 'LEGITIMATE',
-    });
-  });
+  .then(r => r.ok ? r.json() : Promise.reject(new Error('bad response')))
+  .then(d=> showResult(box, d))
+  .catch(()=> showResult(box, clientPredict(s)));
 }
 
 document.getElementById('fraudForm').addEventListener('submit', function(e){
@@ -736,17 +771,21 @@ document.getElementById('fraudForm').addEventListener('submit', function(e){
   const fd = new FormData(this);
   const data = Object.fromEntries(fd.entries());
 
+  const resetBtn = () => { btn.disabled = false; btn.innerHTML = '<i class="fas fa-bolt"></i> &nbsp;ANALYZE TRANSACTION'; };
+
   fetch('/api/predict', {
     method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify(data)
   })
-  .then(r=>r.json())
+  .then(r => r.ok ? r.json() : Promise.reject(new Error('bad response')))
   .then(d=>{
     showResult(document.getElementById('resultBox'), d);
-    btn.disabled = false;
-    btn.innerHTML = '<i class="fas fa-bolt"></i> &nbsp;ANALYZE TRANSACTION';
+    resetBtn();
   })
-  .catch(()=>{ btn.disabled=false; btn.innerHTML='<i class="fas fa-bolt"></i> &nbsp;ANALYZE TRANSACTION'; });
+  .catch(()=>{
+    showResult(document.getElementById('resultBox'), clientPredict(data));
+    resetBtn();
+  });
 });
 
 function showResult(box, d){
